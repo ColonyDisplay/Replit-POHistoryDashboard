@@ -1,0 +1,29 @@
+# Local runtime configuration
+.env
+.env.*
+!.env.example
+
+# Docker-mounted credentials
+secrets/
+*.secret
+
+# Generated Python and UI output
+__pycache__/
+*.pyc
+react-ui/node_modules/
+react-ui/dist/
+
+# Local deployment status and logs
+deploy/logs/
+deploy/status/
+
+# Large / binary data files (repo rule — never commit)
+*.xlsx
+*.xls
+*.db
+*.sqlite
+*.sqlite3
+*.zip
+*.exe
+*.dll
+Database/
