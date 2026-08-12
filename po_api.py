@@ -7,6 +7,7 @@ from typing import Optional, List
 
 from fastapi import FastAPI, HTTPException, Query, Depends, Request, Response, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -238,6 +239,13 @@ def get_recent(limit: int = 50, conn=Depends(get_conn)):
         (limit,),
     ).fetchall()
     return rows
+
+
+@app.get("/v1/oauth_callback")
+def oauth_callback_error():
+    # Clerk redirects failed OAuth attempts here; send users back to the app
+    # instead of showing a raw 404.
+    return RedirectResponse(url="/", status_code=302)
 
 
 @app.get("/health")
