@@ -1,1 +1,2 @@
 - [Clerk auth on FastAPI](clerk-fastapi-auth.md) — Replit-managed Clerk + Python SDK quirks: no JWT key, azp fail-closed, email-domain gate via backend user lookup, hash-routed inline SignIn.
+- [Neon connection quirks](neon-connection-quirks.md) — pooler rejects search_path startup option; tables in po_history schema; use NEON_DATABASE_URL; force sslmode/dbname in connect kwargs.

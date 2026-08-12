@@ -34,7 +34,7 @@ uvicorn po_api:app --host 0.0.0.0 --port 5000
 
 | Secret | Description |
 |---|---|
-| `DATABASE_URL` | Neon **pooled** connection string, SELECT-only role, `sslmode=require` |
+| `NEON_DATABASE_URL` | Neon **pooled** connection string (`DATABASE_URL` is reserved by Replit). App forces `sslmode=require` and `dbname=neondb` (override with `NEON_DATABASE`); tables live in the `po_history` schema (search_path set per connection — Neon's pooler rejects it as a startup option) |
 | `CLERK_SECRET_KEY` | Auto-provisioned by Replit-managed Clerk |
 | `CLERK_PUBLISHABLE_KEY` | Auto-provisioned by Replit-managed Clerk |
 | `VITE_CLERK_PUBLISHABLE_KEY` | Auto-provisioned; needed at `npm run build` time |

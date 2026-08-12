@@ -38,6 +38,11 @@ IS_DEPLOYMENT = bool(os.environ.get("REPLIT_DEPLOYMENT"))
 pool: Optional[ConnectionPool] = None
 
 
+def _set_search_path(conn):
+    conn.execute("SET search_path TO po_history, public")
+    conn.commit()
+
+
 def get_pool() -> ConnectionPool:
     global pool
     if pool is None:
@@ -50,9 +55,14 @@ def get_pool() -> ConnectionPool:
             DATABASE_URL,
             kwargs={
                 "row_factory": dict_row,
-                # Tables live in the po_history schema on Neon
-                "options": "-c search_path=po_history,public",
+                # Normalize: Neon requires TLS, and the app's data lives in
+                # the neondb database (overridable via NEON_DATABASE).
+                "sslmode": "require",
+                "dbname": os.environ.get("NEON_DATABASE", "neondb"),
             },
+            # Neon's pooler (PgBouncer) rejects search_path as a startup
+            # option, so set it after each connection is established.
+            configure=_set_search_path,
             min_size=1,
             max_size=10,
             open=True,
@@ -220,7 +230,7 @@ async def clerk_proxy(path: str, request: Request):
 @protected.get("/recent")
 def get_recent(limit: int = 50, conn=Depends(get_conn)):
     rows = conn.execute(
-        "SELECT * FROM po_detail ORDER BY order_date DESC LIMIT %s",
+        "SELECT * FROM po_history.po_detail ORDER BY order_date DESC LIMIT %s",
         (limit,),
     ).fetchall()
     return rows
@@ -229,7 +239,7 @@ def get_recent(limit: int = 50, conn=Depends(get_conn)):
 @app.get("/health")
 def health(conn=Depends(get_conn)):
     row = conn.execute(
-        "SELECT COUNT(*) AS rows, MAX(order_date) AS max_order_date FROM po_detail"
+        "SELECT COUNT(*) AS rows, MAX(order_date) AS max_order_date FROM po_history.po_detail"
     ).fetchone()
     max_date = row["max_order_date"]
     age_days = (datetime.date.today() - max_date).days if max_date else None
@@ -244,7 +254,7 @@ def health(conn=Depends(get_conn)):
 @protected.get("/parts/{part_num}")
 def get_part_history(part_num: str, conn=Depends(get_conn)):
     rows = conn.execute(
-        "SELECT * FROM po_detail WHERE part_num = %s ORDER BY order_date DESC",
+        "SELECT * FROM po_history.po_detail WHERE part_num = %s ORDER BY order_date DESC",
         (part_num,),
     ).fetchall()
     return rows
@@ -253,7 +263,7 @@ def get_part_history(part_num: str, conn=Depends(get_conn)):
 @protected.get("/vendors/{vendor_id}")
 def get_vendor_history(vendor_id: str, conn=Depends(get_conn)):
     rows = conn.execute(
-        "SELECT * FROM po_detail WHERE vendor_id = %s ORDER BY order_date DESC",
+        "SELECT * FROM po_history.po_detail WHERE vendor_id = %s ORDER BY order_date DESC",
         (vendor_id,),
     ).fetchall()
     return rows
@@ -263,6 +273,8 @@ def get_vendor_history(vendor_id: str, conn=Depends(get_conn)):
 def search(q: str = Query(..., min_length=1), mode: str = Query("or"),
            conn=Depends(get_conn)):
     terms = [t.strip() for t in q.split(",") if t.strip()]
+    if not terms:
+        raise HTTPException(status_code=400, detail="No search terms provided")
     fields = ["part_num", "vendor_name", "description"]
     # ILIKE for case-insensitive search in Postgres
     term_clause = "(" + " OR ".join(f"{f} ILIKE %s" for f in fields) + ")"
@@ -270,7 +282,7 @@ def search(q: str = Query(..., min_length=1), mode: str = Query("or"),
     where = joiner.join(term_clause for _ in terms)
     params = [t.replace("*", "%") if "*" in t else f"%{t}%"
               for t in terms for _ in fields]
-    sql = f"SELECT * FROM po_detail WHERE {where} ORDER BY order_date DESC LIMIT 500"
+    sql = f"SELECT * FROM po_history.po_detail WHERE {where} ORDER BY order_date DESC LIMIT 500"
     rows = conn.execute(sql, params).fetchall()
     return rows
 
@@ -285,13 +297,13 @@ def get_part_summary(part_num: str, conn=Depends(get_conn)):
                ROUND(AVG(unit_cost)::NUMERIC, 4)                AS avg_unit_cost,
                MIN(unit_cost)                                    AS min_unit_cost,
                MAX(unit_cost)                                    AS max_unit_cost,
-               (SELECT unit_cost FROM po_detail
+               (SELECT unit_cost FROM po_history.po_detail
                 WHERE part_num = p.part_num
                 ORDER BY order_date DESC LIMIT 1)               AS last_unit_cost,
-               (SELECT vendor_name FROM po_detail
+               (SELECT vendor_name FROM po_history.po_detail
                 WHERE part_num = p.part_num
                 ORDER BY order_date DESC LIMIT 1)               AS last_vendor
-        FROM po_detail p
+        FROM po_history.po_detail p
         WHERE part_num = %s
         GROUP BY part_num
         """,
@@ -306,9 +318,11 @@ def get_part_summary(part_num: str, conn=Depends(get_conn)):
 def bulk_lookup(body: BulkLookupRequest, conn=Depends(get_conn)):
     if not body.part_numbers:
         return []
+    if len(body.part_numbers) > 500:
+        raise HTTPException(status_code=400, detail="Too many part numbers (max 500)")
     placeholders = ",".join("%s" for _ in body.part_numbers)
     rows = conn.execute(
-        f"SELECT * FROM po_detail WHERE part_num IN ({placeholders}) "
+        f"SELECT * FROM po_history.po_detail WHERE part_num IN ({placeholders}) "
         f"ORDER BY part_num, order_date DESC",
         body.part_numbers,
     ).fetchall()
@@ -320,7 +334,7 @@ def bulk_lookup(body: BulkLookupRequest, conn=Depends(get_conn)):
 @protected.get("/inventory")
 def get_all_inventory(conn=Depends(get_conn)):
     rows = conn.execute(
-        "SELECT * FROM bin_inventory ORDER BY part_num, warehouse_code"
+        "SELECT * FROM po_history.bin_inventory ORDER BY part_num, warehouse_code"
     ).fetchall()
     return rows
 
@@ -328,7 +342,7 @@ def get_all_inventory(conn=Depends(get_conn)):
 @protected.get("/inventory/search")
 def search_inventory(q: str = Query(..., min_length=1), conn=Depends(get_conn)):
     rows = conn.execute(
-        "SELECT * FROM bin_inventory WHERE part_num ILIKE %s OR description ILIKE %s "
+        "SELECT * FROM po_history.bin_inventory WHERE part_num ILIKE %s OR description ILIKE %s "
         "ORDER BY part_num LIMIT 200",
         (f"%{q}%", f"%{q}%"),
     ).fetchall()
@@ -338,7 +352,7 @@ def search_inventory(q: str = Query(..., min_length=1), conn=Depends(get_conn)):
 @protected.get("/inventory/parts/{part_num}")
 def get_inventory_by_part(part_num: str, conn=Depends(get_conn)):
     rows = conn.execute(
-        "SELECT * FROM bin_inventory WHERE part_num = %s ORDER BY warehouse_code",
+        "SELECT * FROM po_history.bin_inventory WHERE part_num = %s ORDER BY warehouse_code",
         (part_num,),
     ).fetchall()
     return rows
@@ -347,7 +361,7 @@ def get_inventory_by_part(part_num: str, conn=Depends(get_conn)):
 @protected.get("/inventory/warehouses")
 def get_inventory_warehouses(conn=Depends(get_conn)):
     rows = conn.execute(
-        "SELECT DISTINCT warehouse_code, warehouse_desc FROM bin_inventory "
+        "SELECT DISTINCT warehouse_code, warehouse_desc FROM po_history.bin_inventory "
         "ORDER BY warehouse_code"
     ).fetchall()
     return rows
@@ -356,7 +370,7 @@ def get_inventory_warehouses(conn=Depends(get_conn)):
 @protected.get("/inventory/warehouses/{wh_code}")
 def inventory_by_warehouse(wh_code: str, conn=Depends(get_conn)):
     rows = conn.execute(
-        "SELECT * FROM bin_inventory WHERE warehouse_code = %s ORDER BY part_num",
+        "SELECT * FROM po_history.bin_inventory WHERE warehouse_code = %s ORDER BY part_num",
         (wh_code,),
     ).fetchall()
     return rows
