@@ -188,7 +188,8 @@ protected = APIRouter(dependencies=[Depends(require_auth)])
 CLERK_FAPI = "https://frontend-api.clerk.dev"
 CLERK_PROXY_PATH = "/api/__clerk"
 _HOP_BY_HOP = {"transfer-encoding", "connection", "keep-alive", "host",
-               "content-length", "content-encoding"}
+               "content-length", "content-encoding", "te", "trailer",
+               "upgrade", "proxy-authenticate", "proxy-authorization"}
 # Never forward the browser's Accept-Encoding: it may advertise codings
 # (e.g. brotli) that httpx cannot decode in this environment, which would
 # corrupt proxied bodies while still returning 200. Let httpx negotiate
@@ -202,13 +203,23 @@ async def clerk_proxy(path: str, request: Request):
     if not IS_DEPLOYMENT or not CLERK_SECRET_KEY:
         raise HTTPException(status_code=404)
 
-    proto = request.headers.get("x-forwarded-proto", "https")
-    fwd_host = request.headers.get("x-forwarded-host", "")
-    host = fwd_host.split(",")[0].strip() or request.headers.get("host", "")
+    # Prefer the configured canonical origin; fall back to platform-set
+    # forwarded headers (Replit's edge injects these) only when unset.
+    if APP_ORIGIN:
+        proxy_origin = APP_ORIGIN.rstrip("/")
+    else:
+        proto = request.headers.get("x-forwarded-proto", "https")
+        fwd_host = request.headers.get("x-forwarded-host", "")
+        host = fwd_host.split(",")[0].strip() or request.headers.get("host", "")
+        proxy_origin = f"{proto}://{host}"
 
+    # Drop hop-by-hop headers plus any header nominated by Connection.
+    connection_tokens = {t.strip().lower()
+                         for t in request.headers.get("connection", "").split(",") if t.strip()}
+    drop = _DROP_REQUEST_HEADERS | connection_tokens
     headers = {k: v for k, v in request.headers.items()
-               if k.lower() not in _DROP_REQUEST_HEADERS}
-    headers["Clerk-Proxy-Url"] = f"{proto}://{host}{CLERK_PROXY_PATH}"
+               if k.lower() not in drop}
+    headers["Clerk-Proxy-Url"] = f"{proxy_origin}{CLERK_PROXY_PATH}"
     headers["Clerk-Secret-Key"] = CLERK_SECRET_KEY
     xff = request.headers.get("x-forwarded-for", "")
     client_ip = xff.split(",")[0].strip() or (request.client.host if request.client else "")
@@ -224,10 +235,17 @@ async def clerk_proxy(path: str, request: Request):
         upstream = await client.request(request.method, url,
                                         headers=headers, content=body)
 
-    resp_headers = {k: v for k, v in upstream.headers.items()
-                    if k.lower() not in _HOP_BY_HOP}
-    return Response(content=upstream.content, status_code=upstream.status_code,
-                    headers=resp_headers)
+    # Preserve duplicate headers (critical: Clerk sets multiple Set-Cookie
+    # headers during sign-in; collapsing them into a dict drops cookies and
+    # breaks the OAuth callback with "authorization_invalid").
+    resp = Response(content=upstream.content, status_code=upstream.status_code)
+    if "content-type" in resp.headers:
+        del resp.headers["content-type"]
+    for k, v in upstream.headers.multi_items():
+        if k.lower() in _HOP_BY_HOP:
+            continue
+        resp.headers.append(k, v)
+    return resp
 
 
 # ── PO history endpoints ───────────────────────────────────────────────────────

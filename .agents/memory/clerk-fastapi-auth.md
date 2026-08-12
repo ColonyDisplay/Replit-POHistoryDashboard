@@ -9,6 +9,8 @@ description: Quirks of Replit-managed Clerk with a Python/FastAPI backend and Vi
 - `@clerk/react` (v2+) has no SignedIn/SignedOut exports — use `<Show when="signed-in">`. Sign-in rendered inline with `routing="hash"` (no router in the SPA).
 - FastAPI has no Express Clerk proxy middleware; a prod-only `/api/__clerk/{path}` httpx passthrough replicates it (Clerk-Proxy-Url + Clerk-Secret-Key headers), gated on REPLIT_DEPLOYMENT.
 - The FastAPI Clerk proxy must NOT forward the browser's Accept-Encoding: the env has no brotli, so httpx can't decode `br` bodies — proxied responses corrupt silently while still logging 200 (blank page in prod). Drop accept-encoding and let httpx negotiate.
+- The proxy must preserve duplicate Set-Cookie headers: building a dict from httpx `headers.items()` collapses them, the browser never gets its Clerk client cookie, and every OAuth callback fails with generic `authorization_invalid` ("You are not authorized to perform this request") no matter how Azure/Clerk are configured. Use `multi_items()` + `resp.headers.append()`.
+- Custom Microsoft (Entra) creds in prod Clerk also require: Azure app set to multi-tenant (Clerk uses the /common endpoint → AADSTS50194 otherwise) and optional claims `email` + `xms_edov` on ID and Access tokens.
 - Never leave the UI gated only behind `<Show>`: it renders nothing until Clerk loads. Keep a loading spinner + timeout error gate (ClerkGate in main.jsx) so a Clerk stall is visible, not blank.
 **Why:** dashboard access for enterprise SSO (EASIE) was unavailable; the email-domain gate is the enforcement backstop.
 **How to apply:** any change to auth in po_api.py / next-ui/src/components/ClerkRoot.jsx should preserve these constraints.
