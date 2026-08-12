@@ -39,3 +39,7 @@ externalPort = 80
 
 [userenv.shared]
 ENABLE_SCRIPT_RUNNER = "0"
+
+[postMerge]
+path = "scripts/post-merge.sh"
+timeoutMs = 240000
