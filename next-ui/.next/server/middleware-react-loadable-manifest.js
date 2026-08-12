@@ -1,1 +1,1 @@
-self.__REACT_LOADABLE_MANIFEST='{"app/page.jsx -> ../components/ClerkRoot":{"id":3736,"files":["static/chunks/32ea55aa.cca68016ea1c7490.js","static/chunks/31.983297ac08affa43.js","static/chunks/736.79cf5ed589682e7e.js"]}}';
+self.__REACT_LOADABLE_MANIFEST='{"app/page.jsx -> ../components/ClerkRoot":{"id":3736,"files":["static/chunks/32ea55aa.cca68016ea1c7490.js","static/chunks/31.983297ac08affa43.js","static/chunks/736.42ebb2e21695262c.js"]}}';

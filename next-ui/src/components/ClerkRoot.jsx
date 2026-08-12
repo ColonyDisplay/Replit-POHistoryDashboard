@@ -127,7 +127,7 @@ function SignInScreen() {
           Sign in with your colonydisplay.com account
         </p>
       </div>
-      <SignIn routing="hash" appearance={clerkAppearance} />
+      <SignIn routing="hash" withSignUp appearance={clerkAppearance} />
     </div>
   );
 }
