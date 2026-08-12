@@ -1,6 +1,6 @@
 # Colony PO History Dashboard
 
-FastAPI backend + Vite/React SPA for browsing PO history and bin inventory,
+FastAPI backend + Next.js frontend (static export) for browsing PO history and bin inventory,
 served from Replit and backed by Neon Postgres.
 
 ## Stack
@@ -8,7 +8,7 @@ served from Replit and backed by Neon Postgres.
 | Layer | Tech |
 |---|---|
 | Backend | Python 3.12, FastAPI, psycopg (psycopg3), uvicorn |
-| Frontend | React 19, Vite 8, AG Grid |
+| Frontend | Next.js 15 (static export), React 19, AG Grid |
 | Database | Neon Postgres (read-only role from powerbi-vm) |
 | Auth | Clerk + Microsoft 365 EASIE (to be wired — see `CLERK_M365_AUTH_PLAN.md`) |
 
@@ -21,12 +21,12 @@ uvicorn po_api:app --host 0.0.0.0 --port 5000 --reload
 ```
 The React dev server runs separately:
 ```
-cd react-ui && npm run dev
+cd next-ui && npm run dev  # optional; workflow serves the built export
 ```
 
 ### Production-style (API serves built UI)
 ```
-npm ci --prefix react-ui && npm run build --prefix react-ui
+npm ci --prefix next-ui && npm run build --prefix next-ui
 uvicorn po_api:app --host 0.0.0.0 --port 5000
 ```
 
@@ -37,7 +37,7 @@ uvicorn po_api:app --host 0.0.0.0 --port 5000
 | `NEON_DATABASE_URL` | Neon **pooled** connection string (`DATABASE_URL` is reserved by Replit). App forces `sslmode=require` and `dbname=neondb` (override with `NEON_DATABASE`); tables live in the `po_history` schema (search_path set per connection — Neon's pooler rejects it as a startup option) |
 | `CLERK_SECRET_KEY` | Auto-provisioned by Replit-managed Clerk |
 | `CLERK_PUBLISHABLE_KEY` | Auto-provisioned by Replit-managed Clerk |
-| `VITE_CLERK_PUBLISHABLE_KEY` | Auto-provisioned; needed at `npm run build` time |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Auto-provisioned; needed at `npm run build` time (mapped to NEXT_PUBLIC_ in next.config.mjs) |
 | `CLERK_JWT_KEY` | Optional PEM public key → networkless JWT verification (falls back to JWKS via secret key) |
 | `APP_ORIGIN` | Optional deployment URL — pins `authorized_parties` (azp) in production |
 | `ALLOWED_EMAIL_DOMAIN` | Email domain gate, defaults to `colonydisplay.com` (backend enforces 403 for others) |
@@ -50,8 +50,8 @@ without it but returns 503 on every data endpoint.
 
 ```
 po_api.py          FastAPI app (Postgres-backed)
-react-ui/          Vite + React SPA
-  src/api.js       Fetch helpers (all relative URLs, no hardcoded host)
+next-ui/           Next.js app (output: "export" -> next-ui/out, served by FastAPI)
+  src/components/api.js  Fetch helpers (all relative URLs, no hardcoded host)
 neon-schema.sql    Postgres DDL — provisioned by powerbi-vm
 requirements.txt   Python dependencies
 handoff-replit.md  Full build checklist for this Replit track
@@ -64,7 +64,7 @@ CLERK_M365_AUTH_PLAN.md  Auth design doc
 - [x] Script runner gated behind `ENABLE_SCRIPT_RUNNER=0`
 - [x] `/health` reports `max_order_date` and `data_age_days`
 - [x] Clerk auth wired (Replit-managed Clerk): all data endpoints require a Bearer session token; `/health` + static stay public; backend enforces colonydisplay.com email domain (403 otherwise)
-- [x] React UI built (`react-ui/dist`) and served by the API
+- [x] Next.js UI built (`next-ui/out`) and served by the API
 - [ ] Microsoft EASIE connection — dashboard-side Clerk config (enterprise SSO) still to be enabled; email sign-in works meanwhile and the domain gate blocks outsiders
 - [x] `NEON_DATABASE_URL` secret set — live Neon connection verified (319k+ PO rows, po_history schema)
 - [ ] Remaining secrets set in Replit Secrets pane

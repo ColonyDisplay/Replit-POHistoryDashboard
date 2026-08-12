@@ -24,7 +24,7 @@ first and hands the reader connection string to the Replit track.
 | `handoff-replit.md` | Build instructions — dashboard | Replit |
 | `neon-schema.sql` | Postgres DDL (matches live SQLite schema) | both |
 | `po_api.py` | FastAPI app (to be ported SQLite → Postgres) | Replit |
-| `react-ui/` | Vite + React SPA | Replit |
+| `next-ui/` | Next.js frontend (static export) | Replit |
 | `po_detail_report.py` | PO history sync (Epicor BAQ) | powerbi-vm |
 | `bin_inv_sync.py` | Bin inventory sync (Epicor BAQ) | powerbi-vm |
 | `Run-PODetail-Report.ps1` | Runner — PO + inventory sync | powerbi-vm |

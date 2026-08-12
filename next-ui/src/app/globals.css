@@ -1,0 +1,5 @@
+/* Base reset — App.css handles all styling */
+
+@keyframes clerk-gate-spin {
+  to { transform: rotate(360deg); }
+}

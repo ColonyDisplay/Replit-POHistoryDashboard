@@ -25,7 +25,7 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "([ -d react-ui/dist ] || (npm ci --prefix react-ui --no-audit --no-fund && npm run build --prefix react-ui)) && uvicorn po_api:app --host 0.0.0.0 --port 5000 --reload"
+args = "([ -d next-ui/out ] || (npm ci --prefix next-ui --no-audit --no-fund && npm run build --prefix next-ui)) && uvicorn po_api:app --host 0.0.0.0 --port 5000 --reload"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
@@ -43,7 +43,7 @@ timeoutMs = 240000
 [deployment]
 deploymentTarget = "gce"
 run = ["python", "-m", "uvicorn", "po_api:app", "--host", "0.0.0.0", "--port", "5000"]
-build = ["bash", "-c", "npm ci --prefix react-ui --no-audit --no-fund && npm run build --prefix react-ui"]
+build = ["bash", "-c", "npm ci --prefix next-ui --no-audit --no-fund && npm run build --prefix next-ui"]
 
 [[ports]]
 localPort = 5000

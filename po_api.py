@@ -22,7 +22,7 @@ from psycopg_pool import ConnectionPool
 
 DATABASE_URL = os.environ.get("NEON_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
 ENABLE_SCRIPT_RUNNER = os.environ.get("ENABLE_SCRIPT_RUNNER", "0") == "1"
-REACT_DIST = Path(__file__).parent / "react-ui" / "dist"
+UI_DIST = Path(__file__).parent / "next-ui" / "out"
 
 CLERK_SECRET_KEY = os.environ.get("CLERK_SECRET_KEY", "")
 CLERK_JWT_KEY = os.environ.get("CLERK_JWT_KEY", "")  # optional PEM -> networkless
@@ -450,5 +450,5 @@ async def run_script(body: RunScriptRequest):
 app.include_router(protected)
 
 
-if REACT_DIST.exists():
-    app.mount("/", StaticFiles(directory=str(REACT_DIST), html=True), name="static")
+if UI_DIST.exists():
+    app.mount("/", StaticFiles(directory=str(UI_DIST), html=True), name="static")
