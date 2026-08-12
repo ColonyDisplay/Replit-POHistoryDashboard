@@ -21,7 +21,7 @@ from psycopg_pool import ConnectionPool
 
 # ── Configuration ──────────────────────────────────────────────────────────────
 
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
+DATABASE_URL = os.environ.get("NEON_DATABASE_URL") or os.environ.get("DATABASE_URL", "")
 ENABLE_SCRIPT_RUNNER = os.environ.get("ENABLE_SCRIPT_RUNNER", "0") == "1"
 REACT_DIST = Path(__file__).parent / "react-ui" / "dist"
 
@@ -48,7 +48,11 @@ def get_pool() -> ConnectionPool:
             )
         pool = ConnectionPool(
             DATABASE_URL,
-            kwargs={"row_factory": dict_row},
+            kwargs={
+                "row_factory": dict_row,
+                # Tables live in the po_history schema on Neon
+                "options": "-c search_path=po_history,public",
+            },
             min_size=1,
             max_size=10,
             open=True,
