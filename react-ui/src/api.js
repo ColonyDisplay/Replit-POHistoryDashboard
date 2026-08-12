@@ -74,4 +74,8 @@ export async function getInventoryWarehouses() {
   return res.json();
 }
 
-export async function getInventoryB
+export async function getInventoryByWarehouse(whCode) {
+  const res = await fetch(`${BASE_URL}/inventory/warehouses/${encodeURIComponent(whCode)}`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}

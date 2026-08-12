@@ -10,6 +10,8 @@ secrets/
 # Generated Python and UI output
 __pycache__/
 *.pyc
+.venv/
+po_checkpoint.json
 react-ui/node_modules/
 react-ui/dist/
 

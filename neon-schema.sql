@@ -2,6 +2,13 @@
 -- Translated from the live SQLite DDL in po_detail_report.py and
 -- bin_inv_sync.py (snapshot 2026-08-11). If the Python COLUMN_MAPs change,
 -- regenerate this file.
+--
+-- All pipeline objects live in the dedicated po_history schema so they never
+-- collide with pre-existing tables in the shared Neon database. The Python
+-- writers set search_path to po_history on every connection.
+
+CREATE SCHEMA IF NOT EXISTS po_history;
+SET search_path TO po_history;
 
 -- ── PO history (source: po_detail_report.py) ────────────────────────────────
 
