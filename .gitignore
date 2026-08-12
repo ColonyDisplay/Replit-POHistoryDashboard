@@ -18,6 +18,7 @@ react-ui/dist/
 # Local deployment status and logs
 deploy/logs/
 deploy/status/
+logs/
 
 # Large / binary data files (repo rule — never commit)
 *.xlsx
