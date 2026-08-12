@@ -43,7 +43,7 @@ uvicorn po_api:app --host 0.0.0.0 --port 5000
 | `ALLOWED_EMAIL_DOMAIN` | Email domain gate, defaults to `colonydisplay.com` (backend enforces 403 for others) |
 | `ENABLE_SCRIPT_RUNNER` | Set to `0` — script runner is disabled on Replit |
 
-`DATABASE_URL` must be set before the API will serve data. The app starts
+`NEON_DATABASE_URL` must be set before the API will serve data. The app starts
 without it but returns 503 on every data endpoint.
 
 ## Project layout
@@ -64,8 +64,9 @@ CLERK_M365_AUTH_PLAN.md  Auth design doc
 - [x] Script runner gated behind `ENABLE_SCRIPT_RUNNER=0`
 - [x] `/health` reports `max_order_date` and `data_age_days`
 - [x] Clerk auth wired (Replit-managed Clerk): all data endpoints require a Bearer session token; `/health` + static stay public; backend enforces colonydisplay.com email domain (403 otherwise)
+- [x] React UI built (`react-ui/dist`) and served by the API
 - [ ] Microsoft EASIE connection — dashboard-side Clerk config (enterprise SSO) still to be enabled; email sign-in works meanwhile and the domain gate blocks outsiders
-- [ ] `DATABASE_URL` secret — provided by powerbi-vm track after Neon provisioning
+- [x] `NEON_DATABASE_URL` secret set — live Neon connection verified (319k+ PO rows, po_history schema)
 - [ ] Remaining secrets set in Replit Secrets pane
 
 ## User preferences

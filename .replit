@@ -2,6 +2,7 @@ modules = ["python-3.12", "nodejs-20", "web"]
 
 [nix]
 channel = "stable-25_05"
+packages = ["postgresql"]
 
 [agent]
 expertMode = true
@@ -24,8 +25,17 @@ author = "agent"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "uvicorn po_api:app --host 0.0.0.0 --port 5000 --reload"
+args = "([ -d react-ui/dist ] || (npm ci --prefix react-ui --no-audit --no-fund && npm run build --prefix react-ui)) && uvicorn po_api:app --host 0.0.0.0 --port 5000 --reload"
 waitForPort = 5000
 
 [workflows.workflow.metadata]
 outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[userenv]
+
+[userenv.shared]
+ENABLE_SCRIPT_RUNNER = "0"

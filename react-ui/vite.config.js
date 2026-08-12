@@ -5,14 +5,16 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
+    allowedHosts: true,
     proxy: {
-      '/search':    'http://localhost:8000',
-      '/parts':     'http://localhost:8000',
-      '/vendors':   'http://localhost:8000',
-      '/summary':   'http://localhost:8000',
-      '/health':    'http://localhost:8000',
-      '/inventory':   'http://localhost:8000',
-      '/bulk-lookup': 'http://localhost:8000',
+      '/search':    'http://localhost:5000',
+      '/parts':     'http://localhost:5000',
+      '/vendors':   'http://localhost:5000',
+      '/summary':   'http://localhost:5000',
+      '/health':    'http://localhost:5000',
+      '/inventory':   'http://localhost:5000',
+      '/bulk-lookup': 'http://localhost:5000',
+      '/recent':      'http://localhost:5000',
     }
   }
 })

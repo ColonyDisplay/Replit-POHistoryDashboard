@@ -13,7 +13,6 @@ from pydantic import BaseModel
 import httpx
 from clerk_backend_api import Clerk
 from clerk_backend_api.security.types import AuthenticateRequestOptions
-from fastapi import FastAPI, HTTPException, Query, Depends, Request, Response, APIRouter
 
 import psycopg
 from psycopg.rows import dict_row
@@ -49,7 +48,7 @@ def get_pool() -> ConnectionPool:
         if not DATABASE_URL:
             raise HTTPException(
                 status_code=503,
-                detail="DATABASE_URL is not configured — add it to Replit Secrets",
+                detail="NEON_DATABASE_URL is not configured — add it to Replit Secrets",
             )
         pool = ConnectionPool(
             DATABASE_URL,

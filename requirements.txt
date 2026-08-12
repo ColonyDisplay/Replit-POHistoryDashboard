@@ -5,3 +5,6 @@ psycopg[binary]
 psycopg-pool
 clerk-backend-api
 httpx
+clerk-backend-api
+httpx
+pydantic
