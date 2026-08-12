@@ -1,26 +1,41 @@
 const BASE_URL = "";
 
+// Set from main.jsx once Clerk loads — returns the current session token.
+let tokenGetter = null;
+export function setAuthTokenGetter(fn) {
+  tokenGetter = fn;
+}
+
+async function authFetch(path, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (tokenGetter) {
+    const token = await tokenGetter();
+    if (token) headers.Authorization = `Bearer ${token}`;
+  }
+  return fetch(`${BASE_URL}${path}`, { ...options, headers });
+}
+
 export async function getRecentPOs(limit = 50) {
-  const res = await fetch(`${BASE_URL}/recent?limit=${limit}`);
+  const res = await authFetch(`/recent?limit=${limit}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function searchPOs(q, mode = "or") {
-  const res = await fetch(`${BASE_URL}/search?q=${encodeURIComponent(q)}&mode=${mode}`);
+  const res = await authFetch(`/search?q=${encodeURIComponent(q)}&mode=${mode}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function getPartSummary(partNum) {
-  const res = await fetch(`${BASE_URL}/summary/${encodeURIComponent(partNum)}`);
+  const res = await authFetch(`/summary/${encodeURIComponent(partNum)}`);
   if (res.status === 404) return null;
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function getPartHistory(partNum) {
-  const res = await fetch(`${BASE_URL}/parts/${encodeURIComponent(partNum)}`);
+  const res = await authFetch(`/parts/${encodeURIComponent(partNum)}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
@@ -39,7 +54,7 @@ export async function getBulkPartSummaries(partNumbers) {
 }
 
 export async function bulkLookupParts(partNumbers) {
-  const res = await fetch(`${BASE_URL}/bulk-lookup`, {
+  const res = await authFetch(`/bulk-lookup`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -51,27 +66,31 @@ export async function bulkLookupParts(partNumbers) {
 }
 
 export async function getAllInventory() {
-  const res = await fetch(`${BASE_URL}/inventory`);
+  const res = await authFetch(`/inventory`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function searchInventory(q) {
-  const res = await fetch(`${BASE_URL}/inventory/search?q=${encodeURIComponent(q)}`);
+  const res = await authFetch(`/inventory/search?q=${encodeURIComponent(q)}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function getInventoryByPart(partNum) {
-  const res = await fetch(`${BASE_URL}/inventory/parts/${encodeURIComponent(partNum)}`);
+  const res = await authFetch(`/inventory/parts/${encodeURIComponent(partNum)}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
 export async function getInventoryWarehouses() {
-  const res = await fetch(`${BASE_URL}/inventory/warehouses`);
+  const res = await authFetch(`/inventory/warehouses`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
 }
 
-export async function getInventoryB
+export async function getInventoryByWarehouse(whCode) {
+  const res = await authFetch(`/inventory/warehouses/${encodeURIComponent(whCode)}`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}

@@ -35,11 +35,13 @@ uvicorn po_api:app --host 0.0.0.0 --port 5000
 | Secret | Description |
 |---|---|
 | `DATABASE_URL` | Neon **pooled** connection string, SELECT-only role, `sslmode=require` |
-| `CLERK_SECRET_KEY` | Clerk production secret key |
-| `CLERK_JWT_KEY` | PEM public key from Clerk dashboard → API keys |
-| `APP_ORIGIN` | Deployment URL (for `authorized_parties`) |
+| `CLERK_SECRET_KEY` | Auto-provisioned by Replit-managed Clerk |
+| `CLERK_PUBLISHABLE_KEY` | Auto-provisioned by Replit-managed Clerk |
+| `VITE_CLERK_PUBLISHABLE_KEY` | Auto-provisioned; needed at `npm run build` time |
+| `CLERK_JWT_KEY` | Optional PEM public key → networkless JWT verification (falls back to JWKS via secret key) |
+| `APP_ORIGIN` | Optional deployment URL — pins `authorized_parties` (azp) in production |
+| `ALLOWED_EMAIL_DOMAIN` | Email domain gate, defaults to `colonydisplay.com` (backend enforces 403 for others) |
 | `ENABLE_SCRIPT_RUNNER` | Set to `0` — script runner is disabled on Replit |
-| `VITE_CLERK_PUBLISHABLE_KEY` | Clerk publishable key (needed at `npm run build` time) |
 
 `DATABASE_URL` must be set before the API will serve data. The app starts
 without it but returns 503 on every data endpoint.
@@ -61,7 +63,8 @@ CLERK_M365_AUTH_PLAN.md  Auth design doc
 - [x] API ported from SQLite → psycopg / Neon Postgres
 - [x] Script runner gated behind `ENABLE_SCRIPT_RUNNER=0`
 - [x] `/health` reports `max_order_date` and `data_age_days`
-- [ ] Clerk + Microsoft 365 auth (see `CLERK_M365_AUTH_PLAN.md`)
+- [x] Clerk auth wired (Replit-managed Clerk): all data endpoints require a Bearer session token; `/health` + static stay public; backend enforces colonydisplay.com email domain (403 otherwise)
+- [ ] Microsoft EASIE connection — dashboard-side Clerk config (enterprise SSO) still to be enabled; email sign-in works meanwhile and the domain gate blocks outsiders
 - [ ] `DATABASE_URL` secret — provided by powerbi-vm track after Neon provisioning
 - [ ] Remaining secrets set in Replit Secrets pane
 

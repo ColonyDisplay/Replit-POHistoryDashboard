@@ -1,0 +1,11 @@
+---
+name: Clerk auth on FastAPI (Replit-managed)
+description: Quirks of Replit-managed Clerk with a Python/FastAPI backend and Vite SPA
+---
+- Replit-managed Clerk provisions CLERK_SECRET_KEY / CLERK_PUBLISHABLE_KEY / VITE_CLERK_PUBLISHABLE_KEY only; no CLERK_JWT_KEY. `clerk-backend-api` falls back to JWKS via the secret key — treat JWT_KEY/APP_ORIGIN as optional.
+- The Python SDK fails closed when `authorized_parties` is set but the token has no `azp` claim (backend-minted session tokens have none). Only pin azp in production via APP_ORIGIN.
+- Session tokens carry no email claim; org-domain restriction is enforced by fetching the user via the Clerk backend API (cached per user_id, fail closed).
+- `@clerk/react` (v2+) has no SignedIn/SignedOut exports — use `<Show when="signed-in">`. Sign-in rendered inline with `routing="hash"` (no router in the SPA).
+- FastAPI has no Express Clerk proxy middleware; a prod-only `/api/__clerk/{path}` httpx passthrough replicates it (Clerk-Proxy-Url + Clerk-Secret-Key headers), gated on REPLIT_DEPLOYMENT.
+**Why:** dashboard access for enterprise SSO (EASIE) was unavailable; the email-domain gate is the enforcement backstop.
+**How to apply:** any change to auth in po_api.py / react-ui/src/main.jsx should preserve these constraints.

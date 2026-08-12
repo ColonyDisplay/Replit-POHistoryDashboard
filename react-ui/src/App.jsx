@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { UserButton } from "@clerk/react";
 import { searchPOs, getPartSummary, getRecentPOs } from "./api";
 import ResultsTable from "./ResultsTable";
 import SummaryCard from "./SummaryCard";
@@ -60,6 +61,9 @@ export default function App() {
         <div className="header-text">
           <h1>PO Price History</h1>
           <p className="subtitle">Search and lookup purchase order data</p>
+        </div>
+        <div style={{ marginLeft: "auto" }}>
+          <UserButton />
         </div>
       </header>
 

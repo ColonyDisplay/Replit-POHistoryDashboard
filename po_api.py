@@ -5,10 +5,15 @@ import datetime
 from pathlib import Path
 from typing import Optional, List
 
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, Request, Response, APIRouter
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
+
+import httpx
+from clerk_backend_api import Clerk
+from clerk_backend_api.security.types import AuthenticateRequestOptions
+from fastapi import FastAPI, HTTPException, Query, Depends, Request, Response, APIRouter
 
 import psycopg
 from psycopg.rows import dict_row
@@ -19,6 +24,12 @@ from psycopg_pool import ConnectionPool
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
 ENABLE_SCRIPT_RUNNER = os.environ.get("ENABLE_SCRIPT_RUNNER", "0") == "1"
 REACT_DIST = Path(__file__).parent / "react-ui" / "dist"
+
+CLERK_SECRET_KEY = os.environ.get("CLERK_SECRET_KEY", "")
+CLERK_JWT_KEY = os.environ.get("CLERK_JWT_KEY", "")  # optional PEM -> networkless
+APP_ORIGIN = os.environ.get("APP_ORIGIN", "")        # deployment URL for azp pinning
+ALLOWED_EMAIL_DOMAIN = os.environ.get("ALLOWED_EMAIL_DOMAIN", "colonydisplay.com")
+IS_DEPLOYMENT = bool(os.environ.get("REPLIT_DEPLOYMENT"))
 
 # ── Connection pool ────────────────────────────────────────────────────────────
 # Pool is created at startup; lazy=True lets the app start before DATABASE_URL
@@ -77,6 +88,69 @@ class BulkLookupRequest(BaseModel):
     part_numbers: List[str]
 
 
+# ── Clerk authentication ───────────────────────────────────────────────────────
+
+_clerk = Clerk(bearer_auth=CLERK_SECRET_KEY) if CLERK_SECRET_KEY else None
+_user_domain_cache: dict = {}  # user_id -> bool (email domain allowed)
+
+
+def _authorized_parties() -> Optional[List[str]]:
+    # Pin azp to the deployment URL in production (per CLERK_M365_AUTH_PLAN.md).
+    # Unset in dev — the SDK fails closed on tokens without an azp claim.
+    if APP_ORIGIN:
+        return [APP_ORIGIN.rstrip("/")]
+    return None
+
+def _email_domain_allowed(user_id: str) -> bool:
+    """Check (with caching) that the Clerk user's email is on the allowed domain."""
+    if not ALLOWED_EMAIL_DOMAIN:
+        return True
+    if user_id in _user_domain_cache:
+        return _user_domain_cache[user_id]
+    try:
+        user = _clerk.users.get(user_id=user_id)
+        emails = [e.email_address for e in (user.email_addresses or [])]
+        allowed = any(
+            e.lower().endswith("@" + ALLOWED_EMAIL_DOMAIN.lower()) for e in emails
+        )
+    except Exception:
+        # Fail closed: cannot confirm the account belongs to the org
+        allowed = False
+    _user_domain_cache[user_id] = allowed
+    return allowed
+
+def require_auth(request: Request):
+    if _clerk is None:
+        raise HTTPException(status_code=503, detail="Auth is not configured")
+
+    opts = {}
+    if CLERK_JWT_KEY:
+        opts["jwt_key"] = CLERK_JWT_KEY
+    parties = _authorized_parties()
+    if parties:
+        opts["authorized_parties"] = parties
+
+    hx_request = httpx.Request(
+        method=request.method,
+        url=str(request.url),
+        headers=dict(request.headers),
+    )
+    state = _clerk.authenticate_request(hx_request, AuthenticateRequestOptions(**opts))
+    if not state.is_signed_in:
+        raise HTTPException(
+            status_code=401,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    user_id = (state.payload or {}).get("sub")
+    if not user_id or not _email_domain_allowed(user_id):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Access restricted to {ALLOWED_EMAIL_DOMAIN} accounts",
+        )
+    return state
+
+
 # ── App ────────────────────────────────────────────────────────────────────────
 
 app = FastAPI(title="Colony PO History API")
@@ -89,10 +163,57 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# All data endpoints require a Clerk session; /health and static stay public.
+protected = APIRouter(dependencies=[Depends(require_auth)])
+
+
+# ── Clerk Frontend API proxy (production only) ────────────────────────────────
+# Proxies Clerk FAPI through this domain so auth works on the deployment URL.
+# Inactive in development — the Clerk dev instance is reached directly.
+
+CLERK_FAPI = "https://frontend-api.clerk.dev"
+CLERK_PROXY_PATH = "/api/__clerk"
+_HOP_BY_HOP = {"transfer-encoding", "connection", "keep-alive", "host",
+               "content-length", "content-encoding"}
+
+
+@app.api_route(CLERK_PROXY_PATH + "/{path:path}",
+               methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"])
+async def clerk_proxy(path: str, request: Request):
+    if not IS_DEPLOYMENT or not CLERK_SECRET_KEY:
+        raise HTTPException(status_code=404)
+
+    proto = request.headers.get("x-forwarded-proto", "https")
+    fwd_host = request.headers.get("x-forwarded-host", "")
+    host = fwd_host.split(",")[0].strip() or request.headers.get("host", "")
+
+    headers = {k: v for k, v in request.headers.items()
+               if k.lower() not in _HOP_BY_HOP}
+    headers["Clerk-Proxy-Url"] = f"{proto}://{host}{CLERK_PROXY_PATH}"
+    headers["Clerk-Secret-Key"] = CLERK_SECRET_KEY
+    xff = request.headers.get("x-forwarded-for", "")
+    client_ip = xff.split(",")[0].strip() or (request.client.host if request.client else "")
+    if client_ip:
+        headers["X-Forwarded-For"] = client_ip
+
+    url = f"{CLERK_FAPI}/{path}"
+    if request.url.query:
+        url += f"?{request.url.query}"
+    body = await request.body()
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        upstream = await client.request(request.method, url,
+                                        headers=headers, content=body)
+
+    resp_headers = {k: v for k, v in upstream.headers.items()
+                    if k.lower() not in _HOP_BY_HOP}
+    return Response(content=upstream.content, status_code=upstream.status_code,
+                    headers=resp_headers)
+
 
 # ── PO history endpoints ───────────────────────────────────────────────────────
 
-@app.get("/recent")
+@protected.get("/recent")
 def get_recent(limit: int = 50, conn=Depends(get_conn)):
     rows = conn.execute(
         "SELECT * FROM po_detail ORDER BY order_date DESC LIMIT %s",
@@ -116,7 +237,7 @@ def health(conn=Depends(get_conn)):
     }
 
 
-@app.get("/parts/{part_num}")
+@protected.get("/parts/{part_num}")
 def get_part_history(part_num: str, conn=Depends(get_conn)):
     rows = conn.execute(
         "SELECT * FROM po_detail WHERE part_num = %s ORDER BY order_date DESC",
@@ -125,7 +246,7 @@ def get_part_history(part_num: str, conn=Depends(get_conn)):
     return rows
 
 
-@app.get("/vendors/{vendor_id}")
+@protected.get("/vendors/{vendor_id}")
 def get_vendor_history(vendor_id: str, conn=Depends(get_conn)):
     rows = conn.execute(
         "SELECT * FROM po_detail WHERE vendor_id = %s ORDER BY order_date DESC",
@@ -134,7 +255,7 @@ def get_vendor_history(vendor_id: str, conn=Depends(get_conn)):
     return rows
 
 
-@app.get("/search")
+@protected.get("/search")
 def search(q: str = Query(..., min_length=1), mode: str = Query("or"),
            conn=Depends(get_conn)):
     terms = [t.strip() for t in q.split(",") if t.strip()]
@@ -150,7 +271,7 @@ def search(q: str = Query(..., min_length=1), mode: str = Query("or"),
     return rows
 
 
-@app.get("/summary/{part_num}")
+@protected.get("/summary/{part_num}")
 def get_part_summary(part_num: str, conn=Depends(get_conn)):
     row = conn.execute(
         """
@@ -177,7 +298,7 @@ def get_part_summary(part_num: str, conn=Depends(get_conn)):
     return row
 
 
-@app.post("/bulk-lookup")
+@protected.post("/bulk-lookup")
 def bulk_lookup(body: BulkLookupRequest, conn=Depends(get_conn)):
     if not body.part_numbers:
         return []
@@ -192,7 +313,7 @@ def bulk_lookup(body: BulkLookupRequest, conn=Depends(get_conn)):
 
 # ── Inventory endpoints ────────────────────────────────────────────────────────
 
-@app.get("/inventory")
+@protected.get("/inventory")
 def get_all_inventory(conn=Depends(get_conn)):
     rows = conn.execute(
         "SELECT * FROM bin_inventory ORDER BY part_num, warehouse_code"
@@ -200,7 +321,7 @@ def get_all_inventory(conn=Depends(get_conn)):
     return rows
 
 
-@app.get("/inventory/search")
+@protected.get("/inventory/search")
 def search_inventory(q: str = Query(..., min_length=1), conn=Depends(get_conn)):
     rows = conn.execute(
         "SELECT * FROM bin_inventory WHERE part_num ILIKE %s OR description ILIKE %s "
@@ -210,7 +331,7 @@ def search_inventory(q: str = Query(..., min_length=1), conn=Depends(get_conn)):
     return rows
 
 
-@app.get("/inventory/parts/{part_num}")
+@protected.get("/inventory/parts/{part_num}")
 def get_inventory_by_part(part_num: str, conn=Depends(get_conn)):
     rows = conn.execute(
         "SELECT * FROM bin_inventory WHERE part_num = %s ORDER BY warehouse_code",
@@ -219,7 +340,7 @@ def get_inventory_by_part(part_num: str, conn=Depends(get_conn)):
     return rows
 
 
-@app.get("/inventory/warehouses")
+@protected.get("/inventory/warehouses")
 def get_inventory_warehouses(conn=Depends(get_conn)):
     rows = conn.execute(
         "SELECT DISTINCT warehouse_code, warehouse_desc FROM bin_inventory "
@@ -228,7 +349,7 @@ def get_inventory_warehouses(conn=Depends(get_conn)):
     return rows
 
 
-@app.get("/inventory/warehouses/{wh_code}")
+@protected.get("/inventory/warehouses/{wh_code}")
 def inventory_by_warehouse(wh_code: str, conn=Depends(get_conn)):
     rows = conn.execute(
         "SELECT * FROM bin_inventory WHERE warehouse_code = %s ORDER BY part_num",
@@ -247,7 +368,7 @@ def _require_script_runner():
         )
 
 
-@app.get("/scripts")
+@protected.get("/scripts")
 def list_scripts():
     _require_script_runner()
     return {
@@ -256,7 +377,7 @@ def list_scripts():
     }
 
 
-@app.post("/run-script")
+@protected.post("/run-script")
 async def run_script(body: RunScriptRequest):
     _require_script_runner()
 
@@ -302,7 +423,10 @@ async def run_script(body: RunScriptRequest):
     }
 
 
-# ── Static UI — must be last so API routes take priority ──────────────────────
+# ── Register protected routes, then static UI last ────────────────────────────
+
+app.include_router(protected)
+
 
 if REACT_DIST.exists():
     app.mount("/", StaticFiles(directory=str(REACT_DIST), html=True), name="static")
