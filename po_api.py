@@ -188,6 +188,11 @@ CLERK_FAPI = "https://frontend-api.clerk.dev"
 CLERK_PROXY_PATH = "/api/__clerk"
 _HOP_BY_HOP = {"transfer-encoding", "connection", "keep-alive", "host",
                "content-length", "content-encoding"}
+# Never forward the browser's Accept-Encoding: it may advertise codings
+# (e.g. brotli) that httpx cannot decode in this environment, which would
+# corrupt proxied bodies while still returning 200. Let httpx negotiate
+# only encodings it can transparently decode.
+_DROP_REQUEST_HEADERS = _HOP_BY_HOP | {"accept-encoding"}
 
 
 @app.api_route(CLERK_PROXY_PATH + "/{path:path}",
@@ -201,7 +206,7 @@ async def clerk_proxy(path: str, request: Request):
     host = fwd_host.split(",")[0].strip() or request.headers.get("host", "")
 
     headers = {k: v for k, v in request.headers.items()
-               if k.lower() not in _HOP_BY_HOP}
+               if k.lower() not in _DROP_REQUEST_HEADERS}
     headers["Clerk-Proxy-Url"] = f"{proto}://{host}{CLERK_PROXY_PATH}"
     headers["Clerk-Secret-Key"] = CLERK_SECRET_KEY
     xff = request.headers.get("x-forwarded-for", "")

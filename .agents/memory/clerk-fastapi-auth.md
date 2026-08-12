@@ -7,5 +7,7 @@ description: Quirks of Replit-managed Clerk with a Python/FastAPI backend and Vi
 - Session tokens carry no email claim; org-domain restriction is enforced by fetching the user via the Clerk backend API (cached per user_id, fail closed).
 - `@clerk/react` (v2+) has no SignedIn/SignedOut exports — use `<Show when="signed-in">`. Sign-in rendered inline with `routing="hash"` (no router in the SPA).
 - FastAPI has no Express Clerk proxy middleware; a prod-only `/api/__clerk/{path}` httpx passthrough replicates it (Clerk-Proxy-Url + Clerk-Secret-Key headers), gated on REPLIT_DEPLOYMENT.
+- The FastAPI Clerk proxy must NOT forward the browser's Accept-Encoding: the env has no brotli, so httpx can't decode `br` bodies — proxied responses corrupt silently while still logging 200 (blank page in prod). Drop accept-encoding and let httpx negotiate.
+- Never leave the UI gated only behind `<Show>`: it renders nothing until Clerk loads. Keep a loading spinner + timeout error gate (ClerkGate in main.jsx) so a Clerk stall is visible, not blank.
 **Why:** dashboard access for enterprise SSO (EASIE) was unavailable; the email-domain gate is the enforcement backstop.
 **How to apply:** any change to auth in po_api.py / react-ui/src/main.jsx should preserve these constraints.

@@ -1,4 +1,4 @@
-import { StrictMode, useEffect } from 'react'
+import { StrictMode, useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import {
   ClerkProvider,
@@ -44,6 +44,80 @@ function AuthTokenBridge() {
   return null
 }
 
+// Renders a visible loading spinner while Clerk initializes, and a clear
+// error message if it never finishes — so the page can never be silently
+// blank while auth is stalled or broken.
+function ClerkGate({ children }) {
+  const { isLoaded } = useAuth()
+  const [timedOut, setTimedOut] = useState(false)
+
+  useEffect(() => {
+    if (isLoaded) return undefined
+    const t = setTimeout(() => setTimedOut(true), 20000)
+    return () => clearTimeout(t)
+  }, [isLoaded])
+
+  if (isLoaded) return children
+
+  return (
+    <div
+      style={{
+        minHeight: '100dvh',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '1rem',
+        padding: '1rem',
+        textAlign: 'center',
+      }}
+    >
+      {timedOut ? (
+        <>
+          <h1 style={{ margin: 0, fontSize: '1.25rem' }}>
+            Sign-in service failed to load
+          </h1>
+          <p style={{ margin: 0, color: '#64748b', maxWidth: '28rem' }}>
+            The authentication service did not respond. Check your network
+            connection, then reload the page. If the problem persists,
+            contact your administrator.
+          </p>
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            style={{
+              padding: '0.5rem 1.25rem',
+              borderRadius: '8px',
+              border: 'none',
+              background: '#2563eb',
+              color: '#fff',
+              fontSize: '0.95rem',
+              cursor: 'pointer',
+            }}
+          >
+            Reload
+          </button>
+        </>
+      ) : (
+        <>
+          <div
+            aria-label="Loading"
+            style={{
+              width: '2.25rem',
+              height: '2.25rem',
+              border: '3px solid #e2e8f0',
+              borderTopColor: '#2563eb',
+              borderRadius: '50%',
+              animation: 'clerk-gate-spin 0.8s linear infinite',
+            }}
+          />
+          <p style={{ margin: 0, color: '#64748b' }}>Loading…</p>
+        </>
+      )}
+    </div>
+  )
+}
+
 function SignInScreen() {
   return (
     <div
@@ -76,13 +150,15 @@ createRoot(document.getElementById('root')).render(
       appearance={clerkAppearance}
       afterSignOutUrl="/"
     >
-      <Show when="signed-in">
-        <AuthTokenBridge />
-        <App />
-      </Show>
-      <Show when="signed-out">
-        <SignInScreen />
-      </Show>
+      <ClerkGate>
+        <Show when="signed-in">
+          <AuthTokenBridge />
+          <App />
+        </Show>
+        <Show when="signed-out">
+          <SignInScreen />
+        </Show>
+      </ClerkGate>
     </ClerkProvider>
   </StrictMode>,
 )
