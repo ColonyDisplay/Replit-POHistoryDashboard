@@ -48,3 +48,7 @@ build = ["bash", "-c", "npm ci --prefix next-ui --no-audit --no-fund && npm run 
 [[ports]]
 localPort = 5000
 externalPort = 80
+
+[[ports]]
+localPort = 5099
+externalPort = 3000
