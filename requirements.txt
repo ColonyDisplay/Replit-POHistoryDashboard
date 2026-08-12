@@ -1,3 +1,5 @@
 requests
 fastapi
 uvicorn[standard]
+psycopg[binary]
+psycopg-pool
