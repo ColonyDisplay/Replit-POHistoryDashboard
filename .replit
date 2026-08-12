@@ -41,6 +41,6 @@ path = "scripts/post-merge.sh"
 timeoutMs = 240000
 
 [deployment]
-deploymentTarget = "autoscale"
+deploymentTarget = "gce"
 run = ["python", "-m", "uvicorn", "po_api:app", "--host", "0.0.0.0", "--port", "5000"]
 build = ["bash", "-c", "npm ci --prefix react-ui --no-audit --no-fund && npm run build --prefix react-ui"]
