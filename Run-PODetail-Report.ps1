@@ -45,10 +45,10 @@ try {
         }
     }
 
-    # --- Python ---
-    $python = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
-    if (-not (Test-Path $python)) { $python = 'python' }
-    & $python -m pip install -r "$PSScriptRoot\requirements.txt" --quiet
+    # Shared interpreter that SentinelOne already allows (EDI uses this too).
+    # Do not fall back to PATH; scheduled tasks need a deterministic runtime.
+    $python = 'C:\Users\administrator.DISPLAY\AppData\Local\Programs\Python\Python311\python.exe'
+    if (-not (Test-Path $python)) { throw "Python not found: $python" }
 
     & $python -u "$PSScriptRoot\po_detail_report.py" @args
     $exitCode = $LASTEXITCODE
