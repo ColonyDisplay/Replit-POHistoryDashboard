@@ -15,6 +15,70 @@ async function authFetch(path, options = {}) {
   return fetch(`${BASE_URL}${path}`, { ...options, headers });
 }
 
+async function readJson(res, fallbackMessage) {
+  if (res.ok) return res.json();
+  let body = null;
+  try {
+    body = await res.json();
+  } catch {
+    // The API normally returns JSON, but keep a safe fallback for proxy errors.
+  }
+  const message = body?.details || body?.error || body?.detail || fallbackMessage;
+  const error = new Error(message);
+  error.status = res.status;
+  error.payload = body;
+  throw error;
+}
+
+export async function getMe() {
+  const res = await authFetch(`/me`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listUsers() {
+  const res = await authFetch(`/users`);
+  if (!res.ok) throw new Error(await res.text());
+  return res.json();
+}
+
+export async function listUserAccessHistory(limit = 100) {
+  const res = await authFetch(`/users/access-history?limit=${limit}`);
+  return readJson(res, "Could not load access history");
+}
+
+export async function getRoleAccess() {
+  return readJson(await authFetch(`/roles`, { cache: "no-store" }), "Could not load role access metadata");
+}
+
+export async function createUser(user) {
+  const res = await authFetch(`/users`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(user),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try { detail = (await res.json()).detail; } catch { detail = await res.text(); }
+    throw new Error(detail || "Failed to add user");
+  }
+  return res.json();
+}
+
+export async function updateUser(id, patch) {
+  const res = await authFetch(`/users/${id}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(patch),
+  });
+  if (!res.ok) {
+    let detail = "";
+    try { detail = (await res.json()).detail; } catch { detail = await res.text(); }
+    throw new Error(detail || "Failed to update user");
+  }
+  return res.json();
+}
+
 export async function getRecentPOs(limit = 50) {
   const res = await authFetch(`/recent?limit=${limit}`);
   if (!res.ok) throw new Error(await res.text());
@@ -93,4 +157,49 @@ export async function getInventoryByWarehouse(whCode) {
   const res = await authFetch(`/inventory/warehouses/${encodeURIComponent(whCode)}`);
   if (!res.ok) throw new Error(await res.text());
   return res.json();
+}
+
+export async function getKpis(asOf) {
+  const query = asOf ? `?asOf=${encodeURIComponent(asOf)}` : "";
+  return readJson(await authFetch(`/api/kpis${query}`, { cache: "no-store" }), "Could not load published KPI data");
+}
+
+export async function getKpiTrends(asOf) {
+  const query = asOf ? `?asOf=${encodeURIComponent(asOf)}` : "";
+  return readJson(await authFetch(`/api/kpis/trends${query}`, { cache: "no-store" }), "Could not load KPI trends");
+}
+
+export async function getKpiDetail(metricId, period) {
+  const params = new URLSearchParams(period);
+  return readJson(
+    await authFetch(`/api/kpis/${encodeURIComponent(metricId)}/detail?${params}`, { cache: "no-store" }),
+    "Could not load published KPI detail",
+  );
+}
+
+export async function getKpiHealth() {
+  return readJson(await authFetch("/api/health", { cache: "no-store" }), "Could not check KPI freshness");
+}
+
+const DATALAKE_PATHS = Object.freeze({
+  health: "/api/datalake/health",
+  freshness: "/api/datalake/freshness",
+  catalog: "/api/datalake/catalog",
+  tables: "/api/datalake/tables",
+  queries: "/api/datalake/queries",
+  shipping_logs: "/api/datalake/queries/shipping_logs",
+  wow: "/api/datalake/wow",
+  mom: "/api/datalake/mom",
+});
+
+export async function getDataLakeReport(report, params = null) {
+  const path = DATALAKE_PATHS[report];
+  if (!path) {
+    throw new Error("Unknown DataLake report");
+  }
+  const query = params ? `?${new URLSearchParams(params)}` : "";
+  return readJson(
+    await authFetch(`${path}${query}`, { cache: "no-store" }),
+    "Could not load DataLake report",
+  );
 }

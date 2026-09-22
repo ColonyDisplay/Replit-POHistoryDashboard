@@ -1,2 +1,8 @@
+- [Nested frontend installation](nested-package-install.md) — the managed Node installer may target the Python workspace root instead of the frontend package.
 - [Clerk auth on FastAPI](clerk-fastapi-auth.md) — Replit-managed Clerk + Python SDK quirks: no JWT key, azp fail-closed, email-domain gate via backend user lookup, hash-routed inline SignIn.
-- [Neon connection quirks](neon-connection-quirks.md) — pooler rejects search_path startup option; tables in po_history schema; use NEON_DATABASE_URL; force sslmode/dbname in connect kwargs.
+- [Neon connection quirks](neon-connection-quirks.md) — pooler rejects search_path; use po_history + NEON_DATABASE_URL, explicit TLS/database settings, and checkout health checks.
+- [Unsigned preview data boundary](unsigned-preview-data-boundary.md) — fixture mode is an unsigned fallback; valid Clerk sessions on development hosts must keep the real-data path.
+- [DataLake contract boundary](datalake-contract-boundary.md) — lake routes and date semantics must be confirmed independently; the Neon KPI handoff is not a lake contract.
+- [Parallel validation isolation](parallel-validation-isolation.md) — validation commands may run together; browser-test builds must not delete shared app artifacts.
+- [CSS bundle cascade order](css-bundle-cascade-order.md) — never rely on stylesheet import order to make shared theme overrides beat conflicting page declarations.
+- [Next static export routes](next-static-export-routes.md) — flat exported pages need explicit FastAPI routes; preview cache rules must cover trailing slashes.

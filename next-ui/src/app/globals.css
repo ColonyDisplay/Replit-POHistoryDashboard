@@ -1,5 +1,328 @@
-/* Base reset — App.css handles all styling */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap");
+
+:root {
+  color-scheme: dark;
+  --font-sans: "IBM Plex Sans", sans-serif;
+  --font-mono: "IBM Plex Mono", monospace;
+  --bg: #090c13;
+  --shell: #0c1018;
+  --control: #10151f;
+  --control-hover: #101722;
+  --panel: #121824;
+  --panel-hover: #151e2d;
+  --panel-raised: #161d2a;
+  --row-hover: #172338;
+  --table-head: #182131;
+  --table-head-hover: #203049;
+  --line: #263142;
+  --line-soft: #1c2635;
+  --line-strong: #38475b;
+  --text: #e3eaf6;
+  --text-table: #cbd6e5;
+  --text-head: #b8c7da;
+  --muted: #8693a8;
+  --muted-dim: #77869b;
+  --blue: #3988df;
+  --blue-soft: #18375a;
+  --blue-border: #2b6096;
+  --blue-hover: #214d7b;
+  --blue-text: #76b6fa;
+  --blue-text-soft: #b9d9ff;
+  --green: #3bbd85;
+  --red: #ef6270;
+  --amber: #d0a454;
+  --warning-bg: #292215;
+  --warning-border: #554422;
+  --warning-text: #e2c98c;
+  --danger-bg: #311a21;
+  --danger-border: #61303a;
+  --danger-text: #f2b5bc;
+  --radius-control: 3px;
+  --radius-tight: 2px;
+  --focus: #65aef9;
+  --lake-ink: var(--text);
+  --lake-muted: var(--muted);
+  --lake-paper: var(--bg);
+  --lake-panel: var(--panel);
+  --lake-line: var(--line);
+  --lake-navy: var(--blue);
+  --lake-sky: var(--blue-text);
+  --lake-aqua: #142d32;
+  --lake-amber: var(--amber);
+  --lake-amber-bg: var(--warning-bg);
+  --lake-danger: var(--red);
+  --lake-danger-bg: var(--danger-bg);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--text);
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+input,
+textarea,
+select,
+.search-wrap input,
+.lookup-page textarea,
+.users-page input,
+.users-page select {
+  border-color: var(--line) !important;
+  border-radius: var(--radius-control) !important;
+  background: var(--control) !important;
+  box-shadow: none;
+  color: var(--text) !important;
+}
+
+.search-wrap input:focus,
+.lookup-page textarea:focus {
+  border-color: var(--blue) !important;
+  box-shadow: 0 0 0 2px var(--blue-soft) !important;
+}
+
+.table-wrapper,
+.summary-card,
+.lookup-controls,
+.results-section {
+  border-color: var(--line);
+  border-radius: var(--radius-control);
+  background: var(--panel);
+  box-shadow: none;
+}
+
+.table-toolbar {
+  border-color: var(--line);
+  background: var(--control);
+}
+
+.row-count,
+.no-results {
+  color: var(--muted);
+}
+
+.row-count strong {
+  color: var(--text);
+}
+
+.table-wrapper th,
+.results-table th {
+  border-color: var(--line);
+  background: var(--table-head);
+  color: var(--text-head);
+}
+
+.table-wrapper th:hover,
+.table-wrapper th.sorted {
+  background: var(--table-head-hover);
+}
+
+.table-wrapper td,
+.results-table td {
+  border-color: var(--line-soft);
+  color: var(--text-table);
+}
+
+.table-wrapper tbody tr:nth-child(even) td {
+  background: var(--control);
+}
+
+.table-wrapper tbody tr:hover td,
+.results-table tr:hover {
+  background: var(--row-hover) !important;
+}
+
+.results-table tr.error-row,
+.results-table tr.not-found-row {
+  background: #2b171d;
+}
+
+.csv-btn,
+.lookup-btn,
+.sample-btn,
+.file-upload-btn {
+  border: 1px solid var(--blue-border) !important;
+  border-radius: var(--radius-control) !important;
+  background: var(--blue-soft) !important;
+  color: #dcecff !important;
+}
+
+.csv-btn {
+  padding: 8px 16px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: background-color 0.2s;
+}
+
+.clear-btn {
+  border: 1px solid var(--line-strong) !important;
+  border-radius: var(--radius-control) !important;
+  background: #202a38 !important;
+  color: var(--text-table) !important;
+}
+
+.clear-all-btn {
+  border: 1px solid var(--danger-border) !important;
+  border-radius: var(--radius-control) !important;
+  background: var(--danger-bg) !important;
+  color: var(--danger-text) !important;
+}
+
+.bool-toggle button {
+  border-color: var(--line);
+  background: var(--panel);
+  color: #aebed1;
+}
+
+.bool-toggle button.active {
+  border-color: var(--blue-border);
+  background: var(--blue-soft);
+  color: #dcecff;
+}
+
+.lookup-page {
+  background: var(--bg);
+  color: var(--text);
+}
+
+.lookup-page header {
+  border-color: var(--line);
+}
+
+.lookup-page .header-icon {
+  color: var(--blue-text);
+  font: 600 10px var(--font-mono);
+}
+
+.lookup-page .header-text h1,
+.results-section h2 {
+  color: var(--text);
+}
+
+.lookup-page .subtitle,
+.file-upload-help {
+  color: var(--muted);
+}
+
+.bom-input-section label {
+  color: var(--text-table);
+}
+
+.results-table .part-num,
+.link-btn {
+  color: var(--blue-text);
+}
+
+.users-page {
+  color: var(--text);
+}
+
+.users-page p {
+  color: var(--muted) !important;
+}
+
+.users-page table {
+  border: 1px solid var(--line);
+  background: var(--panel);
+}
+
+.users-page thead tr,
+.users-page tbody tr {
+  border-color: var(--line) !important;
+}
+
+.users-page th {
+  background: var(--table-head);
+  color: var(--text-head);
+}
+
+.users-page td {
+  border-color: var(--line-soft) !important;
+  color: var(--text-table) !important;
+}
+
+.users-page button {
+  border: 1px solid var(--blue-border) !important;
+  border-radius: var(--radius-control) !important;
+  background: var(--blue-soft) !important;
+  color: #dcecff !important;
+}
+
+.preview-mode-banner,
+.preview-readonly-notice,
+.preview-admin-badge {
+  border: 1px solid var(--warning-border);
+  border-radius: var(--radius-tight);
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font: 11px var(--font-mono);
+}
+
+.error {
+  border-color: var(--danger-border);
+  border-radius: var(--radius-tight);
+  background: var(--danger-bg);
+  color: var(--danger-text);
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--focus) !important;
+  outline-offset: 2px;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: not-allowed;
+  opacity: 0.48;
+}
 
 @keyframes clerk-gate-spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  html,
+  body,
+  #root {
+    height: auto;
+    min-height: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  body {
+    min-height: 100dvh;
+    overscroll-behavior-y: contain;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

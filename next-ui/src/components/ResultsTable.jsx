@@ -19,7 +19,7 @@ const openBadge = (p) =>
   p.value ? '<span style="background:#2563eb;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600;">OPEN</span>' : "";
 
 const COL_DEFS = [
-  { field: "part_num",     headerName: "Part #",      filter: "agTextColumnFilter",   cellStyle: { color: "#2563eb", cursor: "pointer" }, width: 130 },
+  { field: "part_num",     headerName: "Part #",      filter: "agTextColumnFilter",   cellStyle: { color: "#76b6fa", cursor: "pointer" }, width: 130 },
   { field: "description",  headerName: "Description", filter: "agTextColumnFilter",   flex: 2 },
   { field: "vendor_name",  headerName: "Vendor",      filter: "agTextColumnFilter",   flex: 1 },
   { field: "po_num",       headerName: "PO #",        filter: "agNumberColumnFilter", width: 90,  type: "numericColumn" },
@@ -30,7 +30,7 @@ const COL_DEFS = [
   { field: "line_total",   headerName: "Line Total",  filter: "agNumberColumnFilter", width: 110, type: "numericColumn", valueFormatter: fmtMoney },
   { field: "buyer_name",   headerName: "Buyer",       filter: "agTextColumnFilter",   width: 120 },     // Amanda
   { field: "project_id",   headerName: "Project ID",  filter: "agTextColumnFilter",   width: 110 },     // Amanda
-  { field: "open_order",   headerName: "Open?",       filter: "agTextColumnFilter",   width: 80,  cellRenderer: (p) => p.value ? "OPEN" : "", cellStyle: (p) => p.value ? { color: "#2563eb", fontWeight: 600 } : {} },
+  { field: "open_order",   headerName: "Open?",       filter: "agTextColumnFilter",   width: 80,  cellRenderer: (p) => p.value ? "OPEN" : "", cellStyle: (p) => p.value ? { color: "#76b6fa", fontWeight: 600 } : {} },
 ];
 
 const DEFAULT_COL = {
@@ -46,10 +46,17 @@ export default function ResultsTable({ rows, onPartClick }) {
     () =>
       themeQuartz.withParams({
         accentColor: "#2563eb",
-        headerBackgroundColor: "#1e3a5f",
-        headerTextColor: "#ffffff",
-        rowHoverColor: "#eff6ff",
-        fontFamily: "inherit",
+        backgroundColor: "#121824",
+        foregroundColor: "#cbd6e5",
+        borderColor: "#263142",
+        headerBackgroundColor: "#182131",
+        headerTextColor: "#b8c7da",
+        rowHoverColor: "#172338",
+        oddRowBackgroundColor: "#10151f",
+        selectedRowBackgroundColor: "#18375a",
+        inputBackgroundColor: "#0d121c",
+        inputBorderColor: "#263142",
+        fontFamily: "IBM Plex Sans",
         fontSize: 13,
       }),
     []
@@ -77,7 +84,7 @@ export default function ResultsTable({ rows, onPartClick }) {
           <strong>{rows.length}</strong> row{rows.length !== 1 ? "s" : ""}
         </p>
         <button className="csv-btn" onClick={onExportCSV}>
-          ⬇ Download CSV
+          Download CSV
         </button>
       </div>
       <div style={{ height: 520, width: "100%" }}>

@@ -8,3 +8,4 @@ httpx
 clerk-backend-api
 httpx
 pydantic
+pytest

@@ -70,3 +70,10 @@ CLERK_M365_AUTH_PLAN.md  Auth design doc
 - [ ] Remaining secrets set in Replit Secrets pane
 
 ## User preferences
+
+## DataLake reporting
+
+The privileged DataLake page is documented in `DATALAKE.md`. It remains in
+this portal and uses its existing Clerk authentication and static-export
+hosting. Live report contracts must be approved before upstream requests
+are enabled; missing configuration is shown explicitly.

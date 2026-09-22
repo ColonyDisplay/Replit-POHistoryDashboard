@@ -105,7 +105,7 @@ JKL012,Component D,15`;
   return (
     <div className="lookup-page">
       <header>
-        <div className="header-icon">📋</div>
+        <div className="header-icon" aria-hidden="true">BOM</div>
         <div className="header-text">
           <h1>BOM Lookup</h1>
           <p className="subtitle">Paste or upload a Bill of Materials to get last purchase info for each part</p>

@@ -65,7 +65,7 @@ function InventoryTable({ rows }) {
           <strong>{rows.length}</strong> row{rows.length !== 1 ? "s" : ""}
         </p>
         <button className="csv-btn" onClick={() => downloadCSV(sorted)}>
-          ⬇ Download CSV
+          Download CSV
         </button>
       </div>
       <div className="table-scroll">
@@ -156,7 +156,7 @@ export default function InventoryPage() {
   return (
     <>
       <div className="search-wrap">
-        <span className="search-icon">🔍</span>
+        <span className="search-icon" aria-hidden="true" />
         <input
           type="text"
           placeholder="e.g.  B30*, *hang*, Bartlett — comma-separate, use * as wildcard"
@@ -164,10 +164,10 @@ export default function InventoryPage() {
           onChange={(e) => setQuery(e.target.value)}
           autoFocus
         />
-        {loading && <span className="spinner">⟳</span>}
+        {loading && <span className="spinner">Loading</span>}
         {query && !loading && (
           <button className="clear-btn" onClick={() => setQuery("")}>
-            ✕
+            Clear
           </button>
         )}
       </div>

@@ -1,10 +1,12 @@
 import "./globals.css";
-import "./App.css";
 import "./LookupPage.css";
+import "./App.css";
+import "./Kpi.css";
+import "./DataLake.css";
 
 export const metadata = {
-  title: "Colony PO Dashboard",
-  description: "Search and lookup purchase order history and bin inventory",
+  title: "Colony Epicor Dashboard",
+  description: "Purchase order, inventory, and published Operations KPI dashboard",
 };
 
 export default function RootLayout({ children }) {

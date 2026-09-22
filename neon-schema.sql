@@ -70,6 +70,58 @@ CREATE TABLE IF NOT EXISTS inv_run_log (
     total_rows    INTEGER
 );
 
+-- ── Portal users (managed by the app's Users admin page) ────────────────────
+
+CREATE TABLE IF NOT EXISTS users (
+    id         SERIAL PRIMARY KEY,
+    email      TEXT UNIQUE NOT NULL,
+    name       TEXT NOT NULL DEFAULT '',
+    role       TEXT NOT NULL DEFAULT 'viewer',  -- admin | purchasing | warehouse | viewer
+    active     BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS user_access_audit (
+    id              BIGSERIAL PRIMARY KEY,
+    action          TEXT NOT NULL CHECK (
+        action IN ('user_created', 'role_changed', 'activated', 'deactivated', 'access_changed')
+    ),
+    actor_type      TEXT NOT NULL CHECK (actor_type IN ('admin', 'system')),
+    actor_user_id   INTEGER,
+    actor_email     TEXT,
+    actor_label     TEXT NOT NULL,
+    target_user_id  INTEGER NOT NULL,
+    target_email    TEXT NOT NULL,
+    previous_state  JSONB,
+    resulting_state JSONB NOT NULL,
+    changed_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (
+        (
+            actor_type = 'admin'
+            AND actor_user_id IS NOT NULL
+            AND actor_email IS NOT NULL
+        )
+        OR (
+            actor_type = 'system'
+            AND actor_user_id IS NULL
+            AND actor_email IS NULL
+        )
+    )
+);
+
+CREATE INDEX IF NOT EXISTS idx_user_access_audit_changed_at
+    ON user_access_audit (changed_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_user_access_audit_target
+    ON user_access_audit (target_user_id, changed_at DESC);
+
+-- The app runtime role needs SELECT/INSERT/UPDATE on users, SELECT/INSERT on
+-- user_access_audit, and USAGE/SELECT on both SERIAL sequences. Keep
+-- UPDATE/DELETE withheld from user_access_audit so recorded access changes
+-- remain append-only.
+-- Run `python scripts/validate_neon_schema.py` with the runtime role before a
+-- release. The check is read-only and reports the exact missing object/grant.
+
 -- Notes for the port (see HANDOFF_POWERBI-VM.md):
 -- * SQLite "INSERT OR REPLACE" becomes
 --   "INSERT ... ON CONFLICT (<pk>) DO UPDATE SET ...".

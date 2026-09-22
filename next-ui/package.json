@@ -4,15 +4,21 @@
   "version": "0.1.0",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/write-ui-version.mjs",
     "build": "next build",
-    "start": "next start"
+    "start": "next start",
+    "test:visual": "playwright test",
+    "test:visual:update": "playwright test --update-snapshots"
   },
   "dependencies": {
     "@clerk/react": "^6.14.1",
     "ag-grid-community": "^33.0.0",
     "ag-grid-react": "^33.0.0",
-    "next": "^15.5.10",
+    "next": "15.5.25",
     "react": "^19.2.5",
     "react-dom": "^19.2.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
   }
 }

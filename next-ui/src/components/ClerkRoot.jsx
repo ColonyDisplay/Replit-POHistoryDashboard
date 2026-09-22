@@ -1,20 +1,37 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { ClerkProvider, Show, SignIn, useAuth } from "@clerk/react";
 import { publishableKeyFromHost } from "@clerk/react/internal";
 import App from "./App";
 import { setAuthTokenGetter } from "./api";
+import { UI_BUILD_ID } from "../generated/uiBuildVersion";
 
 // REQUIRED — resolves the key from window.location.hostname so the same
 // build serves the deployment domain; falls back to the env key.
-const clerkPubKey = publishableKeyFromHost(
-  window.location.hostname,
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
-);
+const clerkPubKey = process.env.NEXT_PUBLIC_VISUAL_TEST_MODE === "1"
+  ? ""
+  : publishableKeyFromHost(
+    window.location.hostname,
+    process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
+  );
 
 // Empty in dev (Clerk dev FAPI is reached directly), auto-set in prod.
 const clerkProxyUrl = process.env.NEXT_PUBLIC_CLERK_PROXY_URL;
+
+// Overrides the "Continue to <application name>" heading on the sign-in
+// card (the app name itself lives in Clerk's dashboard and isn't editable
+// for this managed instance).
+const clerkLocalization = {
+  signIn: {
+    start: {
+      title: "Colony Epicor Dashboard",
+      titleCombined: "Colony Epicor Dashboard",
+      subtitle: "Sign in with your colonydisplay.com account",
+      subtitleCombined: "Sign in with your colonydisplay.com account",
+    },
+  },
+};
 
 const clerkAppearance = {
   variables: {
@@ -25,13 +42,25 @@ const clerkAppearance = {
 };
 
 // Bridges Clerk's session token into the plain fetch helpers in api.js.
-function AuthTokenBridge() {
+function AuthTokenBridge({ onReady }) {
   const { getToken } = useAuth();
   useEffect(() => {
     setAuthTokenGetter(getToken);
+    onReady();
     return () => setAuthTokenGetter(null);
-  }, [getToken]);
+  }, [getToken, onReady]);
   return null;
+}
+
+function SignedInApp({ initialPage }) {
+  const [tokenReady, setTokenReady] = useState(false);
+  const markTokenReady = useCallback(() => setTokenReady(true), []);
+  return (
+    <>
+      <AuthTokenBridge onReady={markTokenReady} />
+      {tokenReady ? <App initialPage={initialPage} /> : null}
+    </>
+  );
 }
 
 // Renders a visible loading spinner while Clerk initializes, and a clear
@@ -108,7 +137,7 @@ function ClerkGate({ children }) {
   );
 }
 
-function SignInScreen() {
+function SignInScreen({ returnTo = "/" }) {
   return (
     <div
       style={{
@@ -121,18 +150,120 @@ function SignInScreen() {
         padding: "1rem",
       }}
     >
-      <div style={{ textAlign: "center" }}>
-        <h1 style={{ margin: 0, fontSize: "1.5rem" }}>Colony PO Dashboard</h1>
-        <p style={{ margin: "0.5rem 0 0", color: "#64748b" }}>
-          Sign in with your colonydisplay.com account
-        </p>
-      </div>
-      <SignIn routing="hash" withSignUp appearance={clerkAppearance} />
+      <SignIn routing="hash" withSignUp appearance={clerkAppearance} forceRedirectUrl={returnTo} />
     </div>
   );
 }
 
-export default function ClerkRoot() {
+const PREVIEW_BUILD_RELOAD_KEY = "colony-preview-build-reload";
+const PREVIEW_BUILD_CHECK_INTERVAL_MS = 60_000;
+
+function usePreviewBuildRefresh(previewMode) {
+  useEffect(() => {
+    if (previewMode !== true) return undefined;
+
+    let active = true;
+    let checking = false;
+    let reloadStarted = false;
+    document.documentElement.dataset.uiBuildId = UI_BUILD_ID;
+
+    const checkBuild = async () => {
+      if (!active || checking || reloadStarted) return;
+      checking = true;
+      try {
+        const response = await fetch(
+          `/api/ui-version?client=${encodeURIComponent(UI_BUILD_ID)}&t=${Date.now()}`,
+          {
+            cache: "no-store",
+            headers: { "Cache-Control": "no-cache" },
+          },
+        );
+        if (!response.ok || !active) return;
+
+        const payload = await response.json();
+        const serverBuildId = typeof payload.buildId === "string"
+          ? payload.buildId.trim()
+          : "";
+        if (!serverBuildId) return;
+
+        if (serverBuildId === UI_BUILD_ID) {
+          sessionStorage.removeItem(PREVIEW_BUILD_RELOAD_KEY);
+          return;
+        }
+
+        // One attempt per server build prevents a malformed or partially copied
+        // export from trapping Preview in a reload loop.
+        if (sessionStorage.getItem(PREVIEW_BUILD_RELOAD_KEY) === serverBuildId) {
+          return;
+        }
+        sessionStorage.setItem(PREVIEW_BUILD_RELOAD_KEY, serverBuildId);
+        reloadStarted = true;
+        window.location.reload();
+      } catch {
+        // A transient version-check failure must not interrupt the dashboard.
+      } finally {
+        checking = false;
+      }
+    };
+
+    const checkWhenVisible = () => {
+      if (document.visibilityState === "visible") checkBuild();
+    };
+
+    checkBuild();
+    window.addEventListener("focus", checkBuild);
+    document.addEventListener("visibilitychange", checkWhenVisible);
+    const intervalId = window.setInterval(
+      checkBuild,
+      PREVIEW_BUILD_CHECK_INTERVAL_MS,
+    );
+
+    return () => {
+      active = false;
+      window.removeEventListener("focus", checkBuild);
+      document.removeEventListener("visibilitychange", checkWhenVisible);
+      window.clearInterval(intervalId);
+      delete document.documentElement.dataset.uiBuildId;
+    };
+  }, [previewMode]);
+}
+
+export default function ClerkRoot({ initialPage = "home" }) {
+  const [previewMode, setPreviewMode] = useState(null);
+  usePreviewBuildRefresh(previewMode);
+  const signInReturnTo = initialPage === "datalake"
+    ? "/datalake"
+    : initialPage === "admin"
+      ? "/admin"
+      : "/";
+
+  useEffect(() => {
+    let active = true;
+    fetch("/api/preview-mode", { cache: "no-store" })
+      .then((response) => response.ok ? response.json() : { enabled: false })
+      .then((data) => {
+        if (active) setPreviewMode(data.enabled === true);
+      })
+      .catch(() => {
+        if (active) setPreviewMode(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  if (previewMode === null) {
+    return (
+      <div style={{ minHeight: "100dvh", display: "grid", placeItems: "center", color: "#64748b" }}>
+        Loading preview…
+      </div>
+    );
+  }
+
+  if (previewMode && !clerkPubKey) {
+    return <App previewMode initialPage={initialPage} />;
+  }
+
   if (!clerkPubKey) {
     return (
       <div style={{ padding: "2rem", textAlign: "center" }}>
@@ -149,15 +280,15 @@ export default function ClerkRoot() {
       publishableKey={clerkPubKey}
       proxyUrl={clerkProxyUrl}
       appearance={clerkAppearance}
+      localization={clerkLocalization}
       afterSignOutUrl="/"
     >
       <ClerkGate>
         <Show when="signed-in">
-          <AuthTokenBridge />
-          <App />
+          <SignedInApp initialPage={initialPage} />
         </Show>
         <Show when="signed-out">
-          <SignInScreen />
+          {previewMode ? <App previewMode initialPage={initialPage} /> : <SignInScreen returnTo={signInReturnTo} />}
         </Show>
       </ClerkGate>
     </ClerkProvider>

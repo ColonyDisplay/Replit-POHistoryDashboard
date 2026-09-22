@@ -78,7 +78,7 @@ export default function BomResultsTable({ rows }) {
           <strong>{rows.length}</strong> part{rows.length !== 1 ? "s" : ""}
         </p>
         <button className="csv-btn" onClick={() => downloadCSV(sorted)}>
-          ⬇ Download CSV
+          Download CSV
         </button>
       </div>
       <div className="table-scroll">

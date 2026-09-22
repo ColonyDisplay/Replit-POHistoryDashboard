@@ -12,6 +12,13 @@ __pycache__/
 *.pyc
 react-ui/node_modules/
 react-ui/dist/
+next-ui/.next/
+next-ui/.visual-out/
+next-ui/out/
+next-ui/playwright-report/
+next-ui/test-results/
+next-ui/public/ui-version.json
+next-ui/src/generated/uiBuildVersion.js
 
 # Local deployment status and logs
 deploy/logs/
