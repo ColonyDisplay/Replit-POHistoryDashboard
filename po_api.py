@@ -15,13 +15,14 @@ REACT_DIST = Path(__file__).parent / "react-ui" / "dist"
 
 # ── Script runner — whitelisted scripts Fred can invoke headlessly ─────────────
 # Base dir for all Colony projects
-PROJECTS_ROOT = Path(r"C:\VSCode_Projects\Colony-Projects")
+PROJECTS_ROOT = Path(r"C:\Colony_projects")
+REPLIT_ROOT = Path(r"C:\Colony_projects\Epicor-Dashboard -replit")
 
 SCRIPT_WHITELIST = {
     "sf-epicor-audit":       PROJECTS_ROOT / "sf-epicor_sync_audit" / "Run-SFEpicorAudit.ps1",
     "sf-epicor-audit-dry":   PROJECTS_ROOT / "sf-epicor_sync_audit" / "Run-SFEpicorAudit.ps1",
-    "po-detail-sync":        Path(r"C:\VSCode_Projects\Colony-Projects\PO-History-Detail-SQLLite\Run-PODetail-Report.ps1"),
-    "bin-inv-sync":          Path(r"C:\VSCode_Projects\Colony-Projects\PO-History-Detail-SQLLite\Run-BinInv-Sync.ps1"),
+    "po-detail-sync":        REPLIT_ROOT / "Run-PODetail-Report.ps1",
+    "bin-inv-sync":          REPLIT_ROOT / "Run-BinInv-Sync.ps1",
 }
 
 SCRIPT_ARGS = {

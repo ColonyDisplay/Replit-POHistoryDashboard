@@ -14,6 +14,7 @@ import time
 import sqlite3
 import requests
 from pathlib import Path
+from epicor_http import epicor_get
 from datetime import datetime
 from collections import OrderedDict
 
@@ -84,7 +85,7 @@ def fetch_paged(auth, label="FETCH"):
     while True:
         print(f"  [{label}] Batch {page} (skip={params['$skip']})...", flush=True)
         t0 = time.perf_counter()
-        r = requests.get(EPICOR_URL, auth=auth, params=params, verify=True, timeout=120)
+        r = epicor_get(EPICOR_URL, auth=auth, params=params, timeout=120)
         r.raise_for_status()
         batch = r.json().get("value", [])
         elapsed = time.perf_counter() - t0
@@ -107,8 +108,7 @@ def discover(auth):
     print("=" * 60, flush=True)
     print("DISCOVER MODE — fetching 1 record from CD-BinInv-FAST", flush=True)
     print("=" * 60, flush=True)
-    r = requests.get(EPICOR_URL, auth=auth,
-                     params={"$top": 1}, verify=True, timeout=120)
+    r = epicor_get(EPICOR_URL, auth=auth, params={"$top": 1}, timeout=120)
     r.raise_for_status()
     records = r.json().get("value", [])
     if not records:

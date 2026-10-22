@@ -23,8 +23,7 @@ try {
         $env:EPICOR_PASS = [Runtime.InteropServices.Marshal]::PtrToStringAuto($bstr)
         [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($bstr)
     } else {
-        $credScript = "C:\Users\reportpbi-t2\Projects\Credential-Helper\Epicor-Cred.ps1"
-        if (-not (Test-Path $credScript)) { $credScript = "C:\VSCode_Projects\Credential Helper\Epicor-Cred.ps1" }
+        $credScript = "C:\Colony_projects\Credential-Helper\Epicor-Cred.ps1"
         . $credScript
         $cred = Get-EpicorCredential
         $env:EPICOR_USER = $cred.UserName
@@ -45,9 +44,9 @@ try {
         }
     }
 
-    # Shared interpreter that SentinelOne already allows (EDI uses this too).
+    # Machine-wide Python 3.12 (EDI, PO History, and Windows MCP share this).
     # Do not fall back to PATH; scheduled tasks need a deterministic runtime.
-    $python = 'C:\Users\administrator.DISPLAY\AppData\Local\Programs\Python\Python311\python.exe'
+    $python = 'C:\Program Files\Python312\python.exe'
     if (-not (Test-Path $python)) { throw "Python not found: $python" }
     & $python -u "$PSScriptRoot\bin_inv_sync.py" @args
     $exitCode = $LASTEXITCODE

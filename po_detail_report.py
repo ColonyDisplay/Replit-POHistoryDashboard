@@ -6,6 +6,7 @@ import time
 import sqlite3
 import requests
 from pathlib import Path
+from epicor_http import epicor_get
 from datetime import date, datetime, timedelta
 
 SCRIPT_DIR      = Path(__file__).parent
@@ -113,7 +114,7 @@ def fetch_paged(auth, filter_expr=None, label="FETCH"):
     while True:
         print(f"  [{label}] Batch {page} (skip={params['$skip']})...", flush=True)
         t0 = time.perf_counter()
-        r = requests.get(EPICOR_URL, auth=auth, params=params, verify=True, timeout=120)
+        r = epicor_get(EPICOR_URL, auth=auth, params=params, timeout=120)
         r.raise_for_status()
         batch = r.json().get("value", [])
         elapsed = time.perf_counter() - t0
@@ -167,9 +168,9 @@ def fetch_incremental(auth, checkpoint):
             filt = " or ".join(f"POHeader_PONum eq {po}" for po in batch)
             print(f"  [LAST-OPEN] Batch {b_num}/{len(batches)} ({len(batch)} POs)...", flush=True)
             t0 = time.perf_counter()
-            r = requests.get(EPICOR_URL, auth=auth,
-                             params={"$filter": filt, "$top": 1000},
-                             verify=True, timeout=120)
+            r = epicor_get(EPICOR_URL, auth=auth,
+                           params={"$filter": filt, "$top": 1000},
+                           timeout=120)
             r.raise_for_status()
             rows = r.json().get("value", [])
             print(f"  [LAST-OPEN] {len(rows)} rows in {time.perf_counter()-t0:.1f}s", flush=True)
@@ -706,9 +707,9 @@ def run_backfill_buyers(auth):
         print(f"  [BACKFILL] Batch {b_num}/{len(batches)} ({len(batch)} POs)...",
               flush=True)
         t0 = time.perf_counter()
-        r  = requests.get(EPICOR_URL, auth=auth,
-                          params={"$filter": filt, "$top": 5000},
-                          verify=True, timeout=120)
+        r  = epicor_get(EPICOR_URL, auth=auth,
+                        params={"$filter": filt, "$top": 5000},
+                        timeout=120)
         r.raise_for_status()
         recs = r.json().get("value", [])
         print(f"  [BACKFILL] Got {len(recs)} rows in {time.perf_counter()-t0:.1f}s", flush=True)
