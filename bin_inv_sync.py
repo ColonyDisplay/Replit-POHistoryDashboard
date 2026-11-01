@@ -15,7 +15,7 @@ import sqlite3
 import requests
 from pathlib import Path
 from epicor_http import epicor_get
-from datetime import datetime
+from datetime import datetime, timezone
 from collections import OrderedDict
 
 SCRIPT_DIR = Path(__file__).parent
@@ -422,7 +422,9 @@ def sync(auth):
     print("BIN INVENTORY SYNC — incremental upsert", flush=True)
     print("=" * 60, flush=True)
 
-    synced_at = datetime.now()
+    # Aware UTC: Neon columns are TIMESTAMPTZ and the session TimeZone is GMT,
+    # so a naive local value would be stored as if it were UTC.
+    synced_at = datetime.now(timezone.utc)
     targets = _make_targets()
     primary = targets[0]
     count_before = primary.count()
