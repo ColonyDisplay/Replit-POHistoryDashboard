@@ -7,7 +7,7 @@ import sqlite3
 import requests
 from pathlib import Path
 from epicor_http import epicor_get
-from datetime import date, datetime, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 SCRIPT_DIR      = Path(__file__).parent
 EPICOR_URL      = os.environ.get(
@@ -281,7 +281,7 @@ def _checkpoint_from_db(conn):
 def _write_run_log(conn, mode, added, updated, total, max_order_date):
     conn.execute(
         "INSERT INTO run_log VALUES (?,?,?,?,?,?)",
-        (datetime.now().isoformat(), mode, added, updated, total, max_order_date)
+        (datetime.now(timezone.utc).isoformat(), mode, added, updated, total, max_order_date)
     )
 
 
@@ -403,7 +403,7 @@ class PostgresTarget:
         with self.conn.cursor() as cur:
             cur.execute(
                 "INSERT INTO run_log VALUES (%s,%s,%s,%s,%s,%s)",
-                (datetime.now(), mode, added, updated, total, max_order_date))
+                (datetime.now(timezone.utc), mode, added, updated, total, max_order_date))
         self.conn.commit()
 
     def close(self):
@@ -545,7 +545,7 @@ class NeonHttpTarget:
     def write_run_log(self, mode, added, updated, total, max_order_date):
         self._execute(
             "INSERT INTO po_history.run_log VALUES ($1,$2,$3,$4,$5,$6)",
-            [datetime.now().isoformat(), mode, added, updated, total,
+            [datetime.now(timezone.utc).isoformat(), mode, added, updated, total,
              str(max_order_date)[:10]])
 
     def close(self):
